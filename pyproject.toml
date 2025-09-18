@@ -1,7 +1,10 @@
 [project]
 name = "multi-system"
-version = "0.1.0"
 description = "Multi-system is a Python package that provides tools for managing and interacting with multiple operating systems."
+version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
+
+[tool.setuptools]
+package-dir = {"" = "src"}
