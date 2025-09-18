@@ -1,10 +1,23 @@
 [project]
 name = "multi-system"
 description = "Multi-system is a Python package that provides tools for managing and interacting with multiple operating systems."
-version = "0.1.0"
-readme = "README.md"
+dynamic = ["version"]
+# readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
+packages = {find = {where = ["src"]}}
+
+[tool.setuptools.package-data]
+multi_system = ["*.py", "**/*.py"]
+
+[tool.setuptools.dynamic]
+version = {attr = "multi_system.version.__version__"}
+
+[project.scripts]

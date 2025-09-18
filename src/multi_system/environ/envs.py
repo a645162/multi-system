@@ -34,7 +34,7 @@ def get_env_var(var_name: str) -> Optional[str]:
     """
     return os.environ.get(var_name)
 
-file_link.py
+
 def get_all_env_vars() -> Dict[str, str]:
     """
     获取所有环境变量
@@ -130,7 +130,7 @@ def set_env_var_macos(var_name: str, var_value: str) -> bool:
 
         # 当前进程中设置环境变量
         os.environ[var_name] = var_value
-        logger.info(f"环境变量已添加到 ~/.zshrc，请运行 'source ~/.zshrc' 使其生效")
+        logger.info("环境变量已添加到 ~/.zshrc，请运行 'source ~/.zshrc' 使其生效")
         return True
     except Exception as e:
         logger.error(f"macOS 环境变量设置失败: {e}")
@@ -182,7 +182,7 @@ def set_env_var_linux(var_name: str, var_value: str) -> bool:
 
         # 当前进程中设置环境变量
         os.environ[var_name] = var_value
-        logger.info(f"环境变量已添加到 ~/.bashrc，请运行 'source ~/.bashrc' 使其生效")
+        logger.info("环境变量已添加到 ~/.bashrc，请运行 'source ~/.bashrc' 使其生效")
         return True
     except Exception as e:
         logger.error(f"Linux 环境变量设置失败: {e}")
@@ -272,10 +272,11 @@ def remove_env_var(var_name: str, system_wide: bool = False) -> bool:
                         continue
 
                     if (
-                        f"# Added by LLMsClientConfig" in line
+                        "# Added by LLMsClientConfig" in line
                         and line.strip() == "# Added by LLMsClientConfig"
                     ):
-                        next_line = f"export {var_name}="
+                        # TODO: next_line 变量未使用
+                        # next_line = f"export {var_name}="
                         skip_next = True
                         continue
 
@@ -286,7 +287,7 @@ def remove_env_var(var_name: str, system_wide: bool = False) -> bool:
                     file.write("\n".join(new_lines))
 
                 logger.info(
-                    f"环境变量已从 ~/.zshrc 移除，请运行 'source ~/.zshrc' 使其生效"
+                    "环境变量已从 ~/.zshrc 移除，请运行 'source ~/.zshrc' 使其生效"
                 )
 
         elif system == "Linux":
@@ -303,10 +304,11 @@ def remove_env_var(var_name: str, system_wide: bool = False) -> bool:
                         continue
 
                     if (
-                        f"# Added by LLMsClientConfig" in line
+                        "# Added by LLMsClientConfig" in line
                         and line.strip() == "# Added by LLMsClientConfig"
                     ):
-                        next_line = f"export {var_name}="
+                        # TODO: next_line 变量未使用
+                        # next_line = f"export {var_name}="
                         skip_next = True
                         continue
 
@@ -317,7 +319,7 @@ def remove_env_var(var_name: str, system_wide: bool = False) -> bool:
                     file.write("\n".join(new_lines))
 
                 logger.info(
-                    f"环境变量已从 ~/.bashrc 移除，请运行 'source ~/.bashrc' 使其生效"
+                    "环境变量已从 ~/.bashrc 移除，请运行 'source ~/.bashrc' 使其生效"
                 )
 
         # 从当前进程中移除环境变量

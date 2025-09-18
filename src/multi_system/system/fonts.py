@@ -4,9 +4,7 @@ import os
 import platform
 import shutil
 import subprocess
-from pathlib import Path
-from typing import List, Dict, Optional
-import tempfile
+from typing import List, Dict
 
 
 class FontInfo:
@@ -150,7 +148,7 @@ class FontManager:
                     try:
                         name = record.toUnicodeString()
                         font_names[record.nameID] = name
-                    except:
+                    except Exception:
                         continue
             
             return FontInfo(

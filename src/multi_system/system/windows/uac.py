@@ -4,7 +4,6 @@ import subprocess
 import ctypes
 import tempfile
 from typing import Optional, List, Union
-import json
 
 
 class UACManager:
@@ -18,7 +17,7 @@ class UACManager:
         if self._is_admin is None:
             try:
                 self._is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-            except:
+            except Exception:
                 self._is_admin = False
         return self._is_admin
     
@@ -162,14 +161,14 @@ echo %ERRORLEVEL% > "{os.path.join(temp_dir, 'exitcode.txt')}"
                 with open(exitcode_file, 'r') as f:
                     try:
                         returncode = int(f.read().strip())
-                    except:
+                    except Exception:
                         returncode = 0
             
             # 清理临时文件
             try:
                 import shutil
                 shutil.rmtree(temp_dir)
-            except:
+            except Exception:
                 pass
             
             return subprocess.CompletedProcess(
@@ -242,22 +241,22 @@ echo %ERRORLEVEL% > "{os.path.join(temp_dir, 'exitcode.txt')}"
                               r"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System") as key:
                 try:
                     uac_info['EnableLUA'] = winreg.QueryValueEx(key, "EnableLUA")[0]
-                except:
+                except Exception:
                     uac_info['EnableLUA'] = None
                 
                 try:
                     uac_info['ConsentPromptBehaviorAdmin'] = winreg.QueryValueEx(key, "ConsentPromptBehaviorAdmin")[0]
-                except:
+                except Exception:
                     uac_info['ConsentPromptBehaviorAdmin'] = None
                 
                 try:
                     uac_info['ConsentPromptBehaviorUser'] = winreg.QueryValueEx(key, "ConsentPromptBehaviorUser")[0]
-                except:
+                except Exception:
                     uac_info['ConsentPromptBehaviorUser'] = None
                 
                 try:
                     uac_info['PromptOnSecureDesktop'] = winreg.QueryValueEx(key, "PromptOnSecureDesktop")[0]
-                except:
+                except Exception:
                     uac_info['PromptOnSecureDesktop'] = None
             
             # 解释UAC级别

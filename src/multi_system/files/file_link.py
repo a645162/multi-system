@@ -67,7 +67,7 @@ def is_admin() -> bool:
     if os_type == "windows":
         try:
             return ctypes.windll.shell32.IsUserAnAdmin() != 0
-        except:
+        except Exception:
             return False
     elif os_type in ("macos", "linux"):
         # Unix系统检查是否为root
