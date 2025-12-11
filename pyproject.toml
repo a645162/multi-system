@@ -1,35 +1,54 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "multi-system"
-description = "Multi-system is a Python package that provides tools for managing and interacting with multiple operating systems."
-dynamic = ["version"]
-# readme = "README.md"
-requires-python = ">=3.10"
-dependencies = []
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
+version = "0.1.0"
+description = "Multi-system information collection tool"
+authors = [
+    { name = "Haomin Kong", email = "a645162@gmail.com" },
 ]
+dependencies = [
+    "psutil",
+    "requests",
+    "beautifulsoup4",
+]
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "MIT" }
 
-[build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+[project.urls]
+Homepage = "https://github.com/a645162/multi-system"
+Issues = "https://github.com/a645162/multi-system/issues"
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-packages = {find = {where = ["src"]}}
-
-[tool.setuptools.package-data]
-multi_system = ["*.py", "**/*.py"]
-
-[tool.setuptools.dynamic]
-version = {attr = "multi_system.version.__version__"}
+[project.scripts]
+multi-system = "multi_system.main:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.4.2",
-    "pytest-cov>=7.0.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
 ]
 
-[project.scripts]
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["multi_system"]
