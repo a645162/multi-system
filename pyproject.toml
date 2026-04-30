@@ -28,6 +28,9 @@ dependencies = [
   "requests",
   "beautifulsoup4",
   "loguru",
+  'tomli>=2.0.0; python_version < "3.11"',
+  "tomli_w",
+  "pyyaml",
 ]
 
 [project.optional-dependencies]
@@ -44,6 +47,7 @@ gui = [
 
 [project.scripts]
 multi-system = "multi_system.main:main"
+multi-system-gui = "multi_system.main_gui:main"
 
 [project.urls]
 Homepage = "https://github.com/a645162/multi-system"

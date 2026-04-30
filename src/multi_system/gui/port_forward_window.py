@@ -2,6 +2,8 @@
 端口转发GUI主窗口
 """
 
+from dataclasses import asdict
+from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import QSize, Qt
@@ -25,6 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from multi_system.core.data_manager import DataManager
 from multi_system.network.port_forward import PortForwardRule, RuleStatus
 from multi_system.gui.port_forward_worker import PortForwardWorker
 
@@ -47,6 +50,8 @@ COL_REMOTE = 2
 COL_STATUS = 3
 COL_CONNECTIONS = 4
 COL_COUNT = 5
+
+_SAVE_FIELDS = ("name", "local_host", "local_port", "remote_host", "remote_port")
 
 
 class AddRuleDialog(QDialog):
@@ -112,6 +117,9 @@ class PortForwardWindow(QMainWindow):
         self.setWindowTitle("端口转发工具")
         self.setMinimumSize(QSize(750, 450))
 
+        self._dm = DataManager()
+        self._rules_file = self._dm.get_data_dir("port_forward") / "rules.toml"
+
         self._worker = PortForwardWorker(self)
         self._worker.rule_status_changed.connect(self._on_rule_status_changed)
         self._worker.rule_connection_count_changed.connect(self._on_connection_count_changed)
@@ -119,6 +127,7 @@ class PortForwardWindow(QMainWindow):
 
         self._init_ui()
         self._worker.start()
+        self._load_rules()
 
     def _init_ui(self):
         toolbar = QToolBar("工具栏")
@@ -173,10 +182,24 @@ class PortForwardWindow(QMainWindow):
         self.statusBar().showMessage("就绪")
 
     def closeEvent(self, event):
+        self._save_rules()
         self._worker.stop_all_rules()
         self._worker.stop()
         self._worker.wait(3000)
         event.accept()
+
+    def _load_rules(self):
+        data = self._dm.load_toml(self._rules_file)
+        for item in data.get("rules", []):
+            rule = PortForwardRule(**{k: item[k] for k in _SAVE_FIELDS if k in item})
+            self._worker.add_rule(rule)
+        self._refresh_table()
+
+    def _save_rules(self):
+        rules_data = []
+        for rule in self._worker.get_all_rules():
+            rules_data.append({k: asdict(rule)[k] for k in _SAVE_FIELDS})
+        self._dm.save_toml(self._rules_file, {"rules": rules_data})
 
     def _add_rule(self):
         dialog = AddRuleDialog(self)
@@ -185,6 +208,7 @@ class PortForwardWindow(QMainWindow):
             rule = PortForwardRule(**data)
             self._worker.add_rule(rule)
             self._refresh_table()
+            self._save_rules()
 
     def _delete_rule(self):
         rule_id = self._selected_rule_id()
@@ -197,6 +221,7 @@ class PortForwardWindow(QMainWindow):
                 return
         if self._worker.remove_rule(rule_id):
             self._refresh_table()
+            self._save_rules()
 
     def _start_rule(self):
         rule_id = self._selected_rule_id()
