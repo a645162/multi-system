@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QSpinBox,
     QStatusBar,
@@ -130,6 +131,7 @@ class PortForwardWindow(QMainWindow):
         self._load_rules()
 
     def _init_ui(self):
+        # Toolbar
         toolbar = QToolBar("工具栏")
         toolbar.setMovable(False)
         self.addToolBar(toolbar)
@@ -165,6 +167,7 @@ class PortForwardWindow(QMainWindow):
         self._stop_all_action.triggered.connect(self._stop_all)
         toolbar.addAction(self._stop_all_action)
 
+        # Table
         self._table = QTableWidget(0, COL_COUNT)
         self._table.setHorizontalHeaderLabels(["名称", "本地地址", "远程地址", "状态", "连接数"])
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -173,6 +176,8 @@ class PortForwardWindow(QMainWindow):
         self._table.horizontalHeader().setStretchLastSection(True)
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self._table.selectionModel().selectionChanged.connect(self._update_action_states)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
 
         central = QWidget()
         layout = QVBoxLayout(central)
@@ -201,6 +206,8 @@ class PortForwardWindow(QMainWindow):
             rules_data.append({k: asdict(rule)[k] for k in _SAVE_FIELDS})
         self._dm.save_toml(self._rules_file, {"rules": rules_data})
 
+    # --- Actions ---
+
     def _add_rule(self):
         dialog = AddRuleDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -210,12 +217,30 @@ class PortForwardWindow(QMainWindow):
             self._refresh_table()
             self._save_rules()
 
+    def _edit_rule(self):
+        rule_id = self._selected_rule_id()
+        if not rule_id:
+            return
+        rule = self._find_rule(rule_id)
+        if rule is None:
+            return
+
+        if rule.status == RuleStatus.RUNNING:
+            self._worker.stop_rule(rule_id)
+            self.statusBar().showMessage("已自动停止规则，正在编辑...")
+
+        dialog = AddRuleDialog(self, rule=rule)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            data = dialog.get_rule_data()
+            self._worker.update_rule(rule_id, **data)
+            self._refresh_table()
+            self._save_rules()
+
     def _delete_rule(self):
         rule_id = self._selected_rule_id()
         if not rule_id:
             return
-        rule = self._worker.get_all_rules()
-        for r in rule:
+        for r in self._worker.get_all_rules():
             if r.id == rule_id and r.status == RuleStatus.RUNNING:
                 QMessageBox.warning(self, "无法删除", "请先停止规则再删除")
                 return
@@ -240,6 +265,41 @@ class PortForwardWindow(QMainWindow):
 
     def _stop_all(self):
         self._worker.stop_all_rules()
+
+    # --- Context menu ---
+
+    def _show_context_menu(self, pos):
+        rule_id = self._selected_rule_id()
+        if not rule_id:
+            return
+
+        rule = self._find_rule(rule_id)
+        if rule is None:
+            return
+
+        menu = QMenu(self)
+
+        edit_action = menu.addAction("编辑规则")
+        edit_action.triggered.connect(self._edit_rule)
+
+        stopped = rule.status in (RuleStatus.STOPPED, RuleStatus.ERROR)
+        start_action = menu.addAction("启动")
+        start_action.setEnabled(stopped)
+        start_action.triggered.connect(self._start_rule)
+
+        stop_action = menu.addAction("停止")
+        stop_action.setEnabled(rule.status == RuleStatus.RUNNING)
+        stop_action.triggered.connect(self._stop_rule)
+
+        menu.addSeparator()
+
+        delete_action = menu.addAction("删除规则")
+        delete_action.setEnabled(stopped)
+        delete_action.triggered.connect(self._delete_rule)
+
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    # --- Signal handlers ---
 
     def _on_rule_status_changed(self, rule_id: str, status: str, error: str):
         row = self._find_row(rule_id)
@@ -270,6 +330,14 @@ class PortForwardWindow(QMainWindow):
 
     def _on_error(self, message: str):
         self.statusBar().showMessage(f"错误: {message}")
+
+    # --- Helpers ---
+
+    def _find_rule(self, rule_id: str) -> Optional[PortForwardRule]:
+        for r in self._worker.get_all_rules():
+            if r.id == rule_id:
+                return r
+        return None
 
     def _refresh_table(self):
         self._table.setRowCount(0)
@@ -316,8 +384,7 @@ class PortForwardWindow(QMainWindow):
             self._stop_action.setEnabled(False)
             return
 
-        rules = self._worker.get_all_rules()
-        rule = next((r for r in rules if r.id == rule_id), None)
+        rule = self._find_rule(rule_id)
         if rule is None:
             return
 
