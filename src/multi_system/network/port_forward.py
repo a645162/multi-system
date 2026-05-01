@@ -4,10 +4,11 @@
 """
 
 import asyncio
+import contextlib
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Optional
 
 
 class RuleStatus(Enum):
@@ -35,7 +36,7 @@ class PortForwardEngine:
 
     def __init__(
         self,
-        on_rule_status_changed: Optional[Callable[[PortForwardRule], None]] = None,
+        on_rule_status_changed: Callable[[PortForwardRule], None] | None = None,
     ):
         self._rules: dict[str, PortForwardRule] = {}
         self._servers: dict[str, asyncio.AbstractServer] = {}
@@ -55,13 +56,13 @@ class PortForwardEngine:
         self._rules.pop(rule_id, None)
         return True
 
-    def get_rule(self, rule_id: str) -> Optional[PortForwardRule]:
+    def get_rule(self, rule_id: str) -> PortForwardRule | None:
         return self._rules.get(rule_id)
 
     def get_all_rules(self) -> list[PortForwardRule]:
         return list(self._rules.values())
 
-    def update_rule(self, rule_id: str, **kwargs) -> Optional[PortForwardRule]:
+    def update_rule(self, rule_id: str, **kwargs) -> PortForwardRule | None:
         rule = self._rules.get(rule_id)
         if rule is None:
             return None
@@ -148,7 +149,7 @@ class PortForwardEngine:
                 asyncio.open_connection(rule.remote_host, rule.remote_port),
                 timeout=self.CONNECT_TIMEOUT,
             )
-        except (OSError, TimeoutError, asyncio.TimeoutError) as e:
+        except (OSError, TimeoutError, asyncio.TimeoutError):
             rule.active_connections -= 1
             if task:
                 self._connection_tasks[rule_id].discard(task)
@@ -189,10 +190,8 @@ class PortForwardEngine:
         except (ConnectionResetError, BrokenPipeError, asyncio.CancelledError, OSError):
             pass
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 writer.write_eof()
-            except Exception:
-                pass
 
     def _notify(self, rule: PortForwardRule):
         if self._on_rule_status_changed:

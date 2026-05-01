@@ -7,9 +7,9 @@ def get_windows_terminal_data_path():
     path = os.path.join(local_app_data, "Packages")
     # List all directories in path
     dirs = os.listdir(path)
-    for dir in dirs:
-        if dir.startswith("Microsoft.WindowsTerminal_"):
-            return os.path.join(path, dir)
+    for d in dirs:
+        if d.startswith("Microsoft.WindowsTerminal_"):
+            return os.path.join(path, d)
 
 
 def get_windows_terminal_settings_path():

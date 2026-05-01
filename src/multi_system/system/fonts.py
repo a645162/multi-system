@@ -4,7 +4,7 @@ import os
 import platform
 import shutil
 import subprocess
-from typing import List, Dict
+from typing import Any
 
 
 class FontInfo:
@@ -38,7 +38,7 @@ class FontInfo:
     def __repr__(self) -> str:
         return f"FontInfo(name='{self.name}', type='{self.type}', size={self.size})"
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典格式（兼容性方法）"""
         return {
             "name": self.name,
@@ -60,7 +60,7 @@ class FontManager:
         self.system = platform.system().lower()
         self.font_paths = self._get_font_paths()
 
-    def _get_font_paths(self) -> Dict[str, List[str]]:
+    def _get_font_paths(self) -> dict[str, list[str]]:
         """获取系统字体路径"""
         if self.system == "windows":
             return {
@@ -102,7 +102,7 @@ class FontManager:
         else:
             raise OSError(f"不支持的操作系统: {self.system}")
 
-    def list_installed_fonts(self, user_only: bool = False) -> List[FontInfo]:
+    def list_installed_fonts(self, user_only: bool = False) -> list[FontInfo]:
         """列举已安装的字体
 
         Args:
@@ -121,7 +121,7 @@ class FontManager:
 
         for font_dir in paths_to_check:
             if os.path.exists(font_dir):
-                for root, dirs, files in os.walk(font_dir):
+                for root, _dirs, files in os.walk(font_dir):
                     for file in files:
                         if file.lower().endswith((".ttf", ".otf")):
                             font_path = os.path.join(root, file)
@@ -152,7 +152,7 @@ class FontManager:
 
         try:
             # 尝试使用fontTools读取字体信息
-            from fontTools.ttLib import TTFont
+            from fontTools.ttLib import TTFont  # ty: ignore[unresolved-import]
 
             font = TTFont(font_path)
 
@@ -359,7 +359,7 @@ class FontManager:
         except Exception as e:
             print(f"刷新Linux字体缓存失败: {e}")
 
-    def get_system_info(self) -> Dict[str, any]:
+    def get_system_info(self) -> dict[str, Any]:
         """获取系统字体信息"""
         return {
             "system": self.system,

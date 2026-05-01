@@ -2,7 +2,6 @@
 Shell 补全脚本管理
 """
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 

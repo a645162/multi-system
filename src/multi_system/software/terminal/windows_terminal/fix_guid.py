@@ -1,14 +1,14 @@
-from pathlib import Path
 import json
 import uuid
-from typing import Dict, List, Any, Set
+from pathlib import Path
+from typing import Any
 
 from multi_system.software.terminal.windows_terminal.path import (
     get_windows_terminal_settings_path,
 )
 
 
-def analyze_windows_terminal_config(data: Dict[str, Any]) -> Dict[str, List[str]]:
+def analyze_windows_terminal_config(data: dict[str, Any]) -> dict[str, list[str]]:
     """分析Windows Terminal配置文件的格式问题"""
     issues = {
         "duplicate_guids": [],
@@ -50,7 +50,7 @@ def analyze_windows_terminal_config(data: Dict[str, Any]) -> Dict[str, List[str]
 
 
 def fix_windows_terminal_config(
-    try_to_fix: bool = True, settings_path: str = None
+    try_to_fix: bool = True, settings_path: str | None = None
 ) -> bool:
     """修复Windows Terminal配置文件的各种问题"""
     json_path = settings_path or get_windows_terminal_settings_path()
@@ -59,7 +59,7 @@ def fix_windows_terminal_config(
         return False
 
     try:
-        with open(json_path, "r", encoding="utf-8") as f:
+        with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
     except Exception as e:
         print(f"Failed to load settings.json: {e}")
@@ -145,7 +145,7 @@ def fix_windows_terminal_config(
         return False
 
 
-def validate_windows_terminal_config(settings_path: str = None) -> bool:
+def validate_windows_terminal_config(settings_path: str | None = None) -> bool:
     """验证Windows Terminal配置文件格式"""
     json_path = settings_path or get_windows_terminal_settings_path()
     if not json_path or not Path(json_path).exists():
@@ -153,7 +153,7 @@ def validate_windows_terminal_config(settings_path: str = None) -> bool:
         return False
 
     try:
-        with open(json_path, "r", encoding="utf-8") as f:
+        with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
     except Exception as e:
         print(f"Failed to load settings.json: {e}")

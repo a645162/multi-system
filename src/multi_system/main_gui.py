@@ -1,9 +1,6 @@
 import sys
 
-_GUI_COMMANDS = {
-    "port-forward": ("端口转发工具", "launch_port_forward_gui"),
-    "shell-toolbox": ("Shell工具箱", "launch_shell_toolbox_gui"),
-}
+from multi_system.gui.registry import get_all, get_by_cli
 
 
 def main():
@@ -18,12 +15,13 @@ def main():
         return
 
     cmd = args[0]
-    if cmd not in _GUI_COMMANDS:
+    feat = get_by_cli(cmd)
+    if feat is None:
         print(f"未知命令: {cmd}")
         print("使用 --help 查看可用命令")
         sys.exit(1)
 
-    _dispatch(cmd)
+    _dispatch(feat.id)
 
 
 def _print_help():
@@ -32,8 +30,8 @@ def _print_help():
     print("不带参数启动主窗口，可选择功能")
     print()
     print("Commands:")
-    for cmd, (desc, *_) in _GUI_COMMANDS.items():
-        print(f"  {cmd:<16} {desc}")
+    for feat in get_all():
+        print(f"  {feat.cli_name:<20} {feat.description}")
 
 
 def _launch_main():
@@ -46,13 +44,11 @@ def _launch_main():
         sys.exit(1)
 
 
-def _dispatch(cmd: str):
-    _, func_name = _GUI_COMMANDS[cmd]
+def _dispatch(feature_id: str):
     try:
-        from multi_system.gui import __dict__ as gui_module
-        func = gui_module[func_name]
-        func()
-    except (ImportError, KeyError) as e:
+        from multi_system.gui import launch_feature_gui
+        launch_feature_gui(feature_id)
+    except ImportError as e:
         print(f"错误: {e}")
         print("请运行: pip install multi-system[gui]")
         sys.exit(1)

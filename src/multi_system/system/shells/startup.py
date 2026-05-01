@@ -2,7 +2,6 @@
 Shell 启动速度分析
 """
 
-import re
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -30,7 +29,7 @@ class StartupAnalyzer:
                 capture_output=True,
                 timeout=30,
             )
-            result = subprocess.run(
+            subprocess.run(
                 ["/usr/bin/time", "-o", outfile, "-f", "%e %U %S",
                  self.shell, "-i", "-c", "exit"],
                 capture_output=True, timeout=30,

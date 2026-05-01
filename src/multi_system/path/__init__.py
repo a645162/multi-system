@@ -3,6 +3,7 @@
 """
 
 from .paths import (
+    get_all_common_paths,
     get_cache_dir,
     get_config_dir,
     get_data_dir,
@@ -12,7 +13,6 @@ from .paths import (
     get_home,
     get_shell_rc_path,
     get_temp_dir,
-    get_all_common_paths,
 )
 
 __all__ = [

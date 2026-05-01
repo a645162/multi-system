@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from multi_system.system.shells.prompt_themes import PromptTheme, PromptThemeManager
+from multi_system.system.shells.prompt_themes import PromptThemeManager
 
 
 class _CustomPromptDialog(QDialog):

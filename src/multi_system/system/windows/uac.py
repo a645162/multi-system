@@ -1,9 +1,8 @@
-import os
-import sys
-import subprocess
 import ctypes
+import os
+import subprocess
+import sys
 import tempfile
-from typing import Optional, List, Union
 
 
 class UACManager:
@@ -38,11 +37,11 @@ class UACManager:
 
     def run_as_admin(
         self,
-        command: Union[str, List[str]],
+        command: str | list[str],
         wait: bool = True,
         capture_output: bool = False,
-        working_dir: Optional[str] = None,
-    ) -> Optional[subprocess.CompletedProcess]:
+        working_dir: str | None = None,
+    ) -> subprocess.CompletedProcess | None:
         """以管理员权限执行命令
 
         Args:
@@ -91,8 +90,8 @@ class UACManager:
         command: str,
         wait: bool = True,
         capture_output: bool = False,
-        working_dir: Optional[str] = None,
-    ) -> Optional[subprocess.CompletedProcess]:
+        working_dir: str | None = None,
+    ) -> subprocess.CompletedProcess | None:
         """通过UAC提权执行命令"""
         try:
             if capture_output:
@@ -124,8 +123,8 @@ class UACManager:
             return None
 
     def _run_with_output_capture(
-        self, command: str, working_dir: Optional[str] = None
-    ) -> Optional[subprocess.CompletedProcess]:
+        self, command: str, working_dir: str | None = None
+    ) -> subprocess.CompletedProcess | None:
         """通过临时脚本捕获提权命令的输出"""
         try:
             # 创建临时目录和文件
@@ -156,16 +155,16 @@ echo %ERRORLEVEL% > "{os.path.join(temp_dir, "exitcode.txt")}"
             returncode = 0
 
             if os.path.exists(output_file):
-                with open(output_file, "r", encoding="gbk", errors="ignore") as f:
+                with open(output_file, encoding="gbk", errors="ignore") as f:
                     stdout = f.read()
 
             if os.path.exists(error_file):
-                with open(error_file, "r", encoding="gbk", errors="ignore") as f:
+                with open(error_file, encoding="gbk", errors="ignore") as f:
                     stderr = f.read()
 
             exitcode_file = os.path.join(temp_dir, "exitcode.txt")
             if os.path.exists(exitcode_file):
-                with open(exitcode_file, "r") as f:
+                with open(exitcode_file) as f:
                     try:
                         returncode = int(f.read().strip())
                     except Exception:
@@ -189,7 +188,7 @@ echo %ERRORLEVEL% > "{os.path.join(temp_dir, "exitcode.txt")}"
 
     def run_powershell_as_admin(
         self, script: str, wait: bool = True, capture_output: bool = False
-    ) -> Optional[subprocess.CompletedProcess]:
+    ) -> subprocess.CompletedProcess | None:
         """以管理员权限执行PowerShell脚本
 
         Args:

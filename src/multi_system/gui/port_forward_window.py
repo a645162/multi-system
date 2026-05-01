@@ -3,8 +3,6 @@
 """
 
 from dataclasses import asdict
-from pathlib import Path
-from typing import Optional
 
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QColor
@@ -14,13 +12,11 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QHeaderView,
-    QHBoxLayout,
     QLineEdit,
     QMainWindow,
     QMenu,
     QMessageBox,
     QSpinBox,
-    QStatusBar,
     QTableWidget,
     QTableWidgetItem,
     QToolBar,
@@ -29,8 +25,8 @@ from PySide6.QtWidgets import (
 )
 
 from multi_system.core.data_manager import DataManager
-from multi_system.network.port_forward import PortForwardRule, RuleStatus
 from multi_system.gui.port_forward_worker import PortForwardWorker
+from multi_system.network.port_forward import PortForwardRule, RuleStatus
 
 _STATUS_TEXT = {
     RuleStatus.STOPPED: "已停止",
@@ -56,7 +52,7 @@ _SAVE_FIELDS = ("name", "local_host", "local_port", "remote_host", "remote_port"
 
 
 class AddRuleDialog(QDialog):
-    def __init__(self, parent=None, rule: Optional[PortForwardRule] = None):
+    def __init__(self, parent=None, rule: PortForwardRule | None = None):
         super().__init__(parent)
         self.setWindowTitle("编辑规则" if rule else "添加规则")
         self.setMinimumWidth(380)
@@ -333,7 +329,7 @@ class PortForwardWindow(QMainWindow):
 
     # --- Helpers ---
 
-    def _find_rule(self, rule_id: str) -> Optional[PortForwardRule]:
+    def _find_rule(self, rule_id: str) -> PortForwardRule | None:
         for r in self._worker.get_all_rules():
             if r.id == rule_id:
                 return r
@@ -369,7 +365,7 @@ class PortForwardWindow(QMainWindow):
                 return row
         return -1
 
-    def _selected_rule_id(self) -> Optional[str]:
+    def _selected_rule_id(self) -> str | None:
         rows = self._table.selectionModel().selectedRows()
         if not rows:
             return None

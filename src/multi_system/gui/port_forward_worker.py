@@ -4,7 +4,6 @@
 """
 
 import asyncio
-from typing import Optional
 
 from PySide6.QtCore import QMutex, QThread, Signal
 
@@ -21,8 +20,8 @@ class PortForwardWorker(QThread):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._engine: Optional[PortForwardEngine] = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._engine: PortForwardEngine | None = None
         self._mutex = QMutex()
 
     def run(self):
@@ -42,7 +41,7 @@ class PortForwardWorker(QThread):
         if self._loop and self._loop.is_running():
             self._loop.call_soon_threadsafe(self._loop.stop)
 
-    def add_rule(self, rule: PortForwardRule) -> Optional[PortForwardRule]:
+    def add_rule(self, rule: PortForwardRule) -> PortForwardRule | None:
         self._mutex.lock()
         try:
             return self._engine.add_rule(rule) if self._engine else None
@@ -63,7 +62,7 @@ class PortForwardWorker(QThread):
         finally:
             self._mutex.unlock()
 
-    def update_rule(self, rule_id: str, **kwargs) -> Optional[PortForwardRule]:
+    def update_rule(self, rule_id: str, **kwargs) -> PortForwardRule | None:
         self._mutex.lock()
         try:
             return self._engine.update_rule(rule_id, **kwargs) if self._engine else None

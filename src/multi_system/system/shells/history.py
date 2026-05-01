@@ -5,7 +5,6 @@ Shell 历史记录解析与统计
 import re
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path
 
 from multi_system.system.shells.shell_base import ShellDetector
 
@@ -32,7 +31,7 @@ class HistoryAnalyzer:
 
     @staticmethod
     def _parse_bash(content: str) -> list[str]:
-        return [l.strip() for l in content.splitlines() if l.strip()]
+        return [line.strip() for line in content.splitlines() if line.strip()]
 
     @staticmethod
     def _parse_zsh(content: str) -> list[str]:

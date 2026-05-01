@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 NTP服务器测试器
 专门用于测试NTP服务器的可用性和响应时间
@@ -7,9 +6,7 @@ NTP服务器测试器
 
 import socket
 import time
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional
 from dataclasses import dataclass
 
 
@@ -21,7 +18,7 @@ class NTPServerInfo:
     category: str
     region: str  # 国内或海外
     ip_address: str = ""
-    response_time: Optional[float] = None
+    response_time: float | None = None
     is_available: bool = False
 
 
@@ -48,7 +45,7 @@ class NTPServerTester:
                     server.name, 123, socket.AF_UNSPEC, socket.SOCK_STREAM
                 )
                 if addr_info:
-                    server.ip_address = addr_info[0][4][0]
+                    server.ip_address = str(addr_info[0][4][0])
             except socket.gaierror:
                 server.is_available = False
                 server.response_time = None
@@ -61,7 +58,7 @@ class NTPServerTester:
                     server.is_available = True
                 else:
                     server.is_available = False
-            except:
+            except Exception:
                 server.is_available = False
             finally:
                 sock.close()
@@ -69,15 +66,15 @@ class NTPServerTester:
             end_time = time.time()
             server.response_time = (end_time - start_time) * 1000  # 转换为毫秒
 
-        except Exception as e:
+        except Exception:
             server.is_available = False
             server.response_time = None
 
         return server
 
     def test_multiple_servers(
-        self, servers: List[NTPServerInfo], max_workers: int = 10
-    ) -> List[NTPServerInfo]:
+        self, servers: list[NTPServerInfo], max_workers: int = 10
+    ):
         """并发测试多个NTP服务器"""
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # 提交所有任务
@@ -91,7 +88,7 @@ class NTPServerTester:
                 try:
                     server = future.result()
                     yield server
-                except Exception as e:
+                except Exception:
                     server = future_to_server[future]
                     server.is_available = False
                     server.response_time = None

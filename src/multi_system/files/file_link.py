@@ -1,10 +1,9 @@
+import ctypes
 import os
-import sys
 import platform
 import subprocess
-import ctypes
+import sys
 from pathlib import Path
-from typing import Union, Tuple, Optional
 
 
 def get_os_type() -> str:
@@ -14,18 +13,12 @@ def get_os_type() -> str:
     Returns:
         str: 'windows', 'macos', 'linux' 或 'unknown'
     """
-    system = platform.system().lower()
-    if system == "darwin":
-        return "macos"
-    elif system == "windows":
-        return "windows"
-    elif system == "linux":
-        return "linux"
-    else:
-        return "unknown"
+    return {"darwin": "macos", "windows": "windows", "linux": "linux"}.get(
+        platform.system().lower(), "unknown"
+    )
 
 
-def is_symlink(path: Union[str, Path]) -> bool:
+def is_symlink(path: str | Path) -> bool:
     """
     检测指定路径是否为软连接
 
@@ -39,7 +32,7 @@ def is_symlink(path: Union[str, Path]) -> bool:
     return path.is_symlink()
 
 
-def get_symlink_target(path: Union[str, Path]) -> Optional[Path]:
+def get_symlink_target(path: str | Path) -> Path | None:
     """
     获取软连接的目标路径
 
@@ -116,11 +109,11 @@ def run_as_admin(args=None):
 
 
 def create_symlink_windows(
-    source: Union[str, Path],
-    target: Union[str, Path],
+    source: str | Path,
+    target: str | Path,
     is_dir: bool = False,
     auto_elevate: bool = True,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """
     在Windows上创建软连接
 
@@ -183,8 +176,8 @@ def create_symlink_windows(
 
 
 def create_symlink_unix(
-    source: Union[str, Path], target: Union[str, Path], auto_elevate: bool = True
-) -> Tuple[bool, str]:
+    source: str | Path, target: str | Path, auto_elevate: bool = True
+) -> tuple[bool, str]:
     """
     在Unix系统(MacOS/Linux)上创建软连接
 
@@ -251,11 +244,11 @@ def create_symlink_unix(
 
 
 def create_symlink(
-    source: Union[str, Path],
-    target: Union[str, Path],
-    is_dir: bool = None,
+    source: str | Path,
+    target: str | Path,
+    is_dir: bool | None = None,
     auto_elevate: bool = True,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """
     根据当前操作系统创建软连接
 

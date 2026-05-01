@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 NTP服务器模块
 整合NTP服务器获取、解析和测试功能
 """
 
-from typing import List, Optional
 from dataclasses import dataclass
 
 from .ntp_parser import NTPWebParser
-from .ntp_tester import NTPServerTester, NTPServerInfo
+from .ntp_tester import NTPServerInfo, NTPServerTester
 
 
 @dataclass
@@ -20,7 +18,7 @@ class NTPServer:
     category: str
     region: str  # 国内或海外
     ip_address: str = ""
-    response_time: Optional[float] = None
+    response_time: float | None = None
     is_available: bool = False
 
 
@@ -31,7 +29,7 @@ class NTPManager:
         self.parser = NTPWebParser()
         self.tester = NTPServerTester()
 
-    def get_ntp_servers(self) -> List[NTPServer]:
+    def get_ntp_servers(self) -> list[NTPServer]:
         """获取所有NTP服务器"""
         try:
             # 使用解析器获取服务器信息
@@ -57,8 +55,8 @@ class NTPManager:
             return []
 
     def test_servers(
-        self, servers: List[NTPServer], show_progress: bool = True
-    ) -> List[NTPServer]:
+        self, servers: list[NTPServer], show_progress: bool = True
+    ) -> list[NTPServer]:
         """测试服务器速度"""
         if not servers:
             return []
@@ -78,9 +76,8 @@ class NTPManager:
 
         # 测试服务器
         tested_servers = []
-        completed = 0
 
-        for tested_server in self.tester.test_multiple_servers(tester_servers):
+        for idx, tested_server in enumerate(self.tester.test_multiple_servers(tester_servers), 1):
             # 转换回标准格式
             server = NTPServer(
                 name=tested_server.name,
@@ -91,30 +88,29 @@ class NTPManager:
                 is_available=tested_server.is_available,
             )
             tested_servers.append(server)
-            completed += 1
 
             if show_progress:
                 status = "✓" if server.is_available else "✗"
                 if server.is_available:
                     print(
-                        f"[{completed}/{len(servers)}] {status} {server.name} - {server.response_time:.1f}ms"
+                        f"[{idx}/{len(servers)}] {status} {server.name} - {server.response_time:.1f}ms"
                     )
                 else:
                     print(
-                        f"[{completed}/{len(servers)}] {status} {server.name} - 不可用"
+                        f"[{idx}/{len(servers)}] {status} {server.name} - 不可用"
                     )
 
         return tested_servers
 
     def get_best_servers(
-        self, servers: List[NTPServer], top_n: int = 5
-    ) -> List[NTPServer]:
+        self, servers: list[NTPServer], top_n: int = 5
+    ) -> list[NTPServer]:
         """获取响应最快的NTP服务器"""
         available_servers = [s for s in servers if s.is_available]
         available_servers.sort(key=lambda x: x.response_time or float("inf"))
         return available_servers[:top_n]
 
-    def print_servers_by_category(self, servers: List[NTPServer]):
+    def print_servers_by_category(self, servers: list[NTPServer]):
         """按分类显示NTP服务器"""
         # 按地区和分类分组
         regions = {}

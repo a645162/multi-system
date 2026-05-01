@@ -2,7 +2,6 @@
 Tab: 历史记录分析
 """
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,

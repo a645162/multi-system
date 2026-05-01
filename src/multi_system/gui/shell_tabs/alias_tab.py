@@ -2,7 +2,6 @@
 Tab: Alias 管理
 """
 
-from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -13,8 +12,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QMenu,
+    QMessageBox,
     QTableWidget,
     QTableWidgetItem,
     QToolBar,
@@ -26,7 +25,7 @@ from multi_system.system.shells.aliases import AliasEntry, AliasManager
 
 
 class _AliasEditDialog(QDialog):
-    def __init__(self, parent=None, entry: Optional[AliasEntry] = None):
+    def __init__(self, parent=None, entry: AliasEntry | None = None):
         super().__init__(parent)
         self.setWindowTitle("编辑 Alias" if entry else "添加 Alias")
         self.setMinimumWidth(400)
@@ -53,7 +52,7 @@ class _AliasEditDialog(QDialog):
 class AliasTab(QWidget):
     def __init__(self):
         super().__init__()
-        self._manager: Optional[AliasManager] = None
+        self._manager: AliasManager | None = None
         self._loaded = False
         self._init_ui()
 
@@ -177,7 +176,7 @@ class AliasTab(QWidget):
         menu.addAction("删除", self._delete_alias)
         menu.exec(self._table.viewport().mapToGlobal(pos))
 
-    def _selected_name(self) -> Optional[str]:
+    def _selected_name(self) -> str | None:
         rows = self._table.selectionModel().selectedRows()
         if not rows:
             return None

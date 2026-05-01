@@ -70,11 +70,9 @@ class PromptThemeManager:
 
         import re
         new_lines = []
-        replaced = False
         for line in lines:
             if re.match(pattern, line.strip()):
                 new_lines.append(f"# {line}" if not line.strip().startswith("#") else line)
-                replaced = True
             else:
                 new_lines.append(line)
 

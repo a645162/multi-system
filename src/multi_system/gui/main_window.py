@@ -1,5 +1,6 @@
 """
 GUI主窗口 - 功能选择器
+从 registry 读取所有已注册功能
 """
 
 from PySide6.QtCore import QSize, Qt
@@ -11,18 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-
-class _Feature:
-    def __init__(self, name: str, description: str, window_class: str):
-        self.name = name
-        self.description = description
-        self.window_class = window_class
-
-
-_FEATURES = [
-    _Feature("端口转发", "TCP端口转发管理工具，支持添加、启停转发规则", "PortForwardWindow"),
-    _Feature("Shell 工具箱", "RC管理、历史分析、Alias、Prompt主题、补全、迁移、启动分析", "ShellToolboxWindow"),
-]
+from multi_system.gui.registry import get_all
 
 
 class MainWindow(QMainWindow):
@@ -43,9 +33,9 @@ class MainWindow(QMainWindow):
         self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
         self._list.setFocus()
 
-        for feat in _FEATURES:
+        for feat in get_all():
             item = QListWidgetItem(feat.name)
-            item.setData(Qt.ItemDataRole.UserRole, feat)
+            item.setData(Qt.ItemDataRole.UserRole, feat.id)
             item.setToolTip(feat.description)
             self._list.addItem(item)
 
@@ -68,18 +58,11 @@ class MainWindow(QMainWindow):
         if item:
             self._launch_feature(item.data(Qt.ItemDataRole.UserRole))
 
-    def _launch_feature(self, feat: _Feature):
-        if feat is None:
+    def _launch_feature(self, feature_id: str):
+        from multi_system.gui.registry import get_by_id
+        feat = get_by_id(feature_id)
+        if feat is None or feat.window_factory is None:
             return
-
-        if feat.window_class == "PortForwardWindow":
-            from multi_system.gui.port_forward_window import PortForwardWindow
-            win = PortForwardWindow()
-        elif feat.window_class == "ShellToolboxWindow":
-            from multi_system.gui.shell_toolbox_window import ShellToolboxWindow
-            win = ShellToolboxWindow()
-        else:
-            return
-
+        win = feat.window_factory()
         self._sub_windows.append(win)
         win.show()

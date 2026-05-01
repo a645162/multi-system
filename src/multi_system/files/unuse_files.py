@@ -1,8 +1,7 @@
 import os
-from typing import List
 
 
-def remove_empty_files(dir_path: str) -> List[str]:
+def remove_empty_files(dir_path: str) -> list[str]:
     """
     删除指定目录下所有大小为0的空文件
 
@@ -29,7 +28,7 @@ def remove_empty_files(dir_path: str) -> List[str]:
     return removed_files
 
 
-def remove_empty_dirs(dir_path: str) -> List[str]:
+def remove_empty_dirs(dir_path: str) -> list[str]:
     """
     递归删除指定目录下所有空目录，包括删除文件后产生的新空目录
 
@@ -46,7 +45,7 @@ def remove_empty_dirs(dir_path: str) -> List[str]:
         found_empty = False
 
         # 使用自底向上的方式遍历目录树
-        for root, dirs, files in os.walk(dir_path, topdown=False):
+        for root, _dirs, files in os.walk(dir_path, topdown=False):
             # 跳过根目录
             if root == dir_path:
                 continue

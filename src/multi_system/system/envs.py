@@ -1,9 +1,8 @@
+import logging
 import os
 import platform
 import subprocess
-import logging
 from pathlib import Path
-from typing import Dict, Optional, Union
 
 # 配置日志
 logging.basicConfig(
@@ -22,7 +21,7 @@ def get_system_type() -> str:
     return platform.system()
 
 
-def get_env_var(var_name: str) -> Optional[str]:
+def get_env_var(var_name: str) -> str | None:
     """
     获取环境变量值
 
@@ -35,7 +34,7 @@ def get_env_var(var_name: str) -> Optional[str]:
     return os.environ.get(var_name)
 
 
-def get_all_env_vars() -> Dict[str, str]:
+def get_all_env_vars() -> dict[str, str]:
     """
     获取所有环境变量
 
@@ -102,7 +101,7 @@ def set_env_var_macos(var_name: str, var_value: str) -> bool:
         # 读取现有文件内容
         content = ""
         if os.path.exists(zshrc_path):
-            with open(zshrc_path, "r") as file:
+            with open(zshrc_path) as file:
                 content = file.read()
 
         # 构建环境变量导出语句
@@ -154,7 +153,7 @@ def set_env_var_linux(var_name: str, var_value: str) -> bool:
         # 读取现有文件内容
         content = ""
         if os.path.exists(bashrc_path):
-            with open(bashrc_path, "r") as file:
+            with open(bashrc_path) as file:
                 content = file.read()
 
         # 构建环境变量导出语句
@@ -261,7 +260,7 @@ def remove_env_var(var_name: str, system_wide: bool = False) -> bool:
         elif system == "Darwin":  # macOS
             zshrc_path = os.path.expanduser("~/.zshrc")
             if os.path.exists(zshrc_path):
-                with open(zshrc_path, "r") as file:
+                with open(zshrc_path) as file:
                     content = file.read()
 
                 new_lines = []
@@ -293,7 +292,7 @@ def remove_env_var(var_name: str, system_wide: bool = False) -> bool:
         elif system == "Linux":
             bashrc_path = os.path.expanduser("~/.bashrc")
             if os.path.exists(bashrc_path):
-                with open(bashrc_path, "r") as file:
+                with open(bashrc_path) as file:
                     content = file.read()
 
                 new_lines = []
@@ -332,7 +331,7 @@ def remove_env_var(var_name: str, system_wide: bool = False) -> bool:
         return False
 
 
-def append_to_path(new_path: Union[str, Path]) -> bool:
+def append_to_path(new_path: str | Path) -> bool:
     """
     将路径添加到 PATH 环境变量
 
@@ -359,7 +358,7 @@ def append_to_path(new_path: Union[str, Path]) -> bool:
     return set_env_var("PATH", new_path_value)
 
 
-def remove_from_path(path_to_remove: Union[str, Path]) -> bool:
+def remove_from_path(path_to_remove: str | Path) -> bool:
     """
     从 PATH 环境变量中移除路径
 

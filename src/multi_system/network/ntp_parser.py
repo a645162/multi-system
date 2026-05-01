@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 NTP服务器HTML获取和解析器
 独立处理从网页获取和解析NTP服务器信息的逻辑
 """
 
+from dataclasses import dataclass
+
 import requests
 from bs4 import BeautifulSoup
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass
 
 
 @dataclass
@@ -38,9 +37,9 @@ class NTPWebParser:
             response.encoding = "utf-8"
             return response.text
         except requests.RequestException as e:
-            raise Exception(f"获取网页失败: {e}")
+            raise Exception(f"获取网页失败: {e}") from e
 
-    def parse_html(self, html_content: str) -> List[NTPServerInfo]:
+    def parse_html(self, html_content: str) -> list[NTPServerInfo]:
         """解析HTML内容，提取NTP服务器信息"""
         soup = BeautifulSoup(html_content, "html.parser")
         servers = []
@@ -57,7 +56,7 @@ class NTPWebParser:
 
         return servers
 
-    def _parse_section(self, section_start, region: str) -> List[NTPServerInfo]:
+    def _parse_section(self, section_start, region: str) -> list[NTPServerInfo]:
         """解析特定区域的NTP服务器"""
         servers = []
         current_category = ""
@@ -108,12 +107,9 @@ class NTPWebParser:
             return False
 
         # 检查是否为域名或IP地址格式
-        if "." in address or ":" in address:
-            return True
+        return bool("." in address or ":" in address)
 
-        return False
-
-    def get_ntp_servers(self) -> List[NTPServerInfo]:
+    def get_ntp_servers(self) -> list[NTPServerInfo]:
         """获取并解析NTP服务器信息"""
         html_content = self.fetch_html()
         return self.parse_html(html_content)

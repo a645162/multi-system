@@ -1,4 +1,4 @@
-from .envs import get_env_var, set_env_var, remove_env_var
+from .envs import get_env_var, remove_env_var, set_env_var
 from .fonts import FontManager
 from .machine import get_machine_name
 

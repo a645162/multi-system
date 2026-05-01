@@ -49,7 +49,7 @@ class AliasManager:
         content = self._rc.read_rc()
         lines = content.splitlines(keepends=True)
         pattern = re.compile(rf"^alias\s+{re.escape(name)}\s*=")
-        new_lines = [l for l in lines if not pattern.match(l.strip())]
+        new_lines = [line for line in lines if not pattern.match(line.strip())]
         if len(new_lines) == len(lines):
             return False
         self._rc.write_rc("".join(new_lines))
