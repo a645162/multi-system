@@ -2,6 +2,7 @@ import sys
 
 _GUI_COMMANDS = {
     "port-forward": ("端口转发工具", "launch_port_forward_gui"),
+    "shell-toolbox": ("Shell工具箱", "launch_shell_toolbox_gui"),
 }
 
 

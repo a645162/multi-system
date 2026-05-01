@@ -21,6 +21,7 @@ class _Feature:
 
 _FEATURES = [
     _Feature("端口转发", "TCP端口转发管理工具，支持添加、启停转发规则", "PortForwardWindow"),
+    _Feature("Shell 工具箱", "RC管理、历史分析、Alias、Prompt主题、补全、迁移、启动分析", "ShellToolboxWindow"),
 ]
 
 
@@ -74,6 +75,9 @@ class MainWindow(QMainWindow):
         if feat.window_class == "PortForwardWindow":
             from multi_system.gui.port_forward_window import PortForwardWindow
             win = PortForwardWindow()
+        elif feat.window_class == "ShellToolboxWindow":
+            from multi_system.gui.shell_toolbox_window import ShellToolboxWindow
+            win = ShellToolboxWindow()
         else:
             return
 

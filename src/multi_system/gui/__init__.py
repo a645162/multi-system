@@ -33,3 +33,13 @@ def launch_port_forward_gui():
     window = PortForwardWindow()
     window.show()
     return app.exec()
+
+
+def launch_shell_toolbox_gui():
+    """启动Shell工具箱GUI"""
+    from multi_system.gui.shell_toolbox_window import ShellToolboxWindow
+
+    app = _get_app()
+    window = ShellToolboxWindow()
+    window.show()
+    return app.exec()
