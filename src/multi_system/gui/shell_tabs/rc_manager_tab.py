@@ -36,13 +36,11 @@ class _DiffDialog(QDialog):
         left = QPlainTextEdit()
         left.setReadOnly(True)
         left.setPlainText(current)
-        left.setWindowTitle("当前")
         splitter.addWidget(left)
 
         right = QPlainTextEdit()
         right.setReadOnly(True)
         right.setPlainText(backup)
-        right.setWindowTitle("备份")
         splitter.addWidget(right)
 
         layout.addWidget(splitter)
@@ -55,12 +53,12 @@ class RCManagerTab(QWidget):
     def __init__(self):
         super().__init__()
         self._manager: RCManager | None = None
+        self._loaded = False
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
 
-        # Shell selector
         top = QHBoxLayout()
         top.addWidget(QLabel("Shell:"))
         self._shell_combo = QComboBox()
@@ -70,23 +68,21 @@ class RCManagerTab(QWidget):
         top.addStretch()
         layout.addLayout(top)
 
-        # Toolbar
         toolbar = QToolBar()
         toolbar.setMovable(False)
+        toolbar.addAction("刷新", self._force_refresh)
+        toolbar.addSeparator()
         toolbar.addAction("备份当前RC", self._backup)
-        self._restore_action = toolbar.addAction("恢复选中备份", self._restore)
-        self._diff_action = toolbar.addAction("对比", self._diff)
-        toolbar.addAction("刷新", self._refresh)
+        toolbar.addAction("恢复选中备份", self._restore)
+        toolbar.addAction("对比", self._diff)
         layout.addWidget(toolbar)
 
-        # RC content preview
         self._preview = QPlainTextEdit()
         self._preview.setReadOnly(True)
         self._preview.setMaximumHeight(150)
         layout.addWidget(QLabel("当前 RC 内容预览:"))
         layout.addWidget(self._preview)
 
-        # Backup list
         layout.addWidget(QLabel("备份列表:"))
         self._table = QTableWidget(0, 3)
         self._table.setHorizontalHeaderLabels(["备份名", "大小", "修改时间"])
@@ -95,9 +91,18 @@ class RCManagerTab(QWidget):
         self._table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._table)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._loaded:
+            self._loaded = True
+            self._on_shell_changed(self._shell_combo.currentText())
+
     def _on_shell_changed(self, shell: str):
         self._manager = RCManager(shell)
         self._refresh()
+
+    def _force_refresh(self):
+        self._on_shell_changed(self._shell_combo.currentText())
 
     def _refresh(self):
         if not self._manager:

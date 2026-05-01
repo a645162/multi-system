@@ -2,13 +2,14 @@
 Tab: 启动速度分析
 """
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPlainTextEdit,
+    QProgressBar,
     QSpinBox,
     QTableWidget,
     QTableWidgetItem,
@@ -24,12 +25,12 @@ class StartupTab(QWidget):
     def __init__(self):
         super().__init__()
         self._analyzer: StartupAnalyzer | None = None
+        self._loaded = False
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
 
-        # Shell selector + count
         top = QHBoxLayout()
         top.addWidget(QLabel("Shell:"))
         self._shell_combo = QComboBox()
@@ -45,16 +46,20 @@ class StartupTab(QWidget):
         top.addStretch()
         layout.addLayout(top)
 
-        # Toolbar
         toolbar = QToolBar()
         toolbar.setMovable(False)
+        toolbar.addAction("刷新", self._force_refresh)
+        toolbar.addSeparator()
         toolbar.addAction("测量", self._measure)
         toolbar.addAction("Zsh Profiling", self._zprof)
         layout.addWidget(toolbar)
 
-        # Results
         self._result_label = QLabel("点击「测量」开始分析")
         layout.addWidget(self._result_label)
+
+        self._progress = QProgressBar()
+        self._progress.setVisible(False)
+        layout.addWidget(self._progress)
 
         self._table = QTableWidget(0, 4)
         self._table.setHorizontalHeaderLabels(["次数", "Real (s)", "User (s)", "Sys (s)"])
@@ -62,24 +67,39 @@ class StartupTab(QWidget):
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self._table)
 
-        # Profiling output
         layout.addWidget(QLabel("Zsh Profiling 输出:"))
         self._prof_output = QPlainTextEdit()
         self._prof_output.setReadOnly(True)
         self._prof_output.setMaximumHeight(200)
         layout.addWidget(self._prof_output)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._loaded:
+            self._loaded = True
+            self._on_shell_changed(self._shell_combo.currentText())
+
     def _on_shell_changed(self, shell: str):
         self._analyzer = StartupAnalyzer(shell)
         self._table.setRowCount(0)
         self._result_label.setText("点击「测量」开始分析")
+
+    def _force_refresh(self):
+        self._on_shell_changed(self._shell_combo.currentText())
 
     def _measure(self):
         if not self._analyzer:
             return
         count = self._count_spin.value()
         self._table.setRowCount(0)
+        self._progress.setVisible(True)
+        self._progress.setRange(0, 0)
+
+        QTimer.singleShot(50, lambda: self._do_measure(count))
+
+    def _do_measure(self, count: int):
         results = self._analyzer.measure_multiple(count)
+        self._progress.setVisible(False)
 
         total_real = 0.0
         for i, r in enumerate(results, 1):
@@ -101,7 +121,12 @@ class StartupTab(QWidget):
         if not self._analyzer or self._analyzer.shell != "zsh":
             QMessageBox.information(self, "提示", "Zsh Profiling 仅支持 zsh")
             return
-        self.statusBar().showMessage("正在测量...") if hasattr(self, 'statusBar') else None
+        self._progress.setVisible(True)
+        self._progress.setRange(0, 0)
+        QTimer.singleShot(50, self._do_zprof)
+
+    def _do_zprof(self):
         result, prof_lines = self._analyzer.measure_zsh_with_profiling()
+        self._progress.setVisible(False)
         self._prof_output.setPlainText("\n".join(prof_lines) if prof_lines else "无 profiling 数据")
         self._result_label.setText(f"Zsh 启动时间: {result.real_time:.3f}s")

@@ -43,12 +43,12 @@ class MigrationTab(QWidget):
         super().__init__()
         self._manager: MigrationManager | None = None
         self._entries: list[MigrationEntry] = []
+        self._loaded = False
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
 
-        # Source → Target
         top = QHBoxLayout()
         top.addWidget(QLabel("源 Shell:"))
         self._source_combo = QComboBox()
@@ -63,21 +63,30 @@ class MigrationTab(QWidget):
         top.addStretch()
         layout.addLayout(top)
 
-        # Toolbar
         toolbar = QToolBar()
         toolbar.setMovable(False)
+        toolbar.addAction("刷新", self._force_refresh)
+        toolbar.addSeparator()
         toolbar.addAction("分析", self._analyze)
         toolbar.addAction("预览迁移内容", self._preview)
         toolbar.addAction("执行迁移", self._execute)
         layout.addWidget(toolbar)
 
-        # Table
         self._table = QTableWidget(0, 4)
         self._table.setHorizontalHeaderLabels(["类型", "名称", "值", "可迁移"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._table)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._loaded:
+            self._loaded = True
+            self._analyze()
+
+    def _force_refresh(self):
+        self._analyze()
 
     def _analyze(self):
         src = self._source_combo.currentText()

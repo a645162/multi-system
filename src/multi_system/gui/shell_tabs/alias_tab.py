@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMessageBox,
     QMenu,
@@ -53,14 +54,14 @@ class AliasTab(QWidget):
     def __init__(self):
         super().__init__()
         self._manager: Optional[AliasManager] = None
+        self._loaded = False
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
 
-        # Shell selector
         top = QHBoxLayout()
-        top.addWidget(self._make_label("Shell:"))
+        top.addWidget(QLabel("Shell:"))
         self._shell_combo = QComboBox()
         self._shell_combo.addItems(["bash", "zsh"])
         self._shell_combo.currentTextChanged.connect(self._on_shell_changed)
@@ -68,21 +69,17 @@ class AliasTab(QWidget):
         top.addStretch()
         layout.addLayout(top)
 
-        # Toolbar
         toolbar = QToolBar()
         toolbar.setMovable(False)
-        self._add_action = toolbar.addAction("添加")
-        self._add_action.triggered.connect(self._add_alias)
-        self._edit_action = toolbar.addAction("编辑")
-        self._edit_action.triggered.connect(self._edit_alias)
-        self._delete_action = toolbar.addAction("删除")
-        self._delete_action.triggered.connect(self._delete_alias)
+        toolbar.addAction("刷新", self._force_refresh)
         toolbar.addSeparator()
-        self._sync_action = toolbar.addAction("同步到其他Shell")
-        self._sync_action.triggered.connect(self._sync_aliases)
+        toolbar.addAction("添加", self._add_alias)
+        toolbar.addAction("编辑", self._edit_alias)
+        toolbar.addAction("删除", self._delete_alias)
+        toolbar.addSeparator()
+        toolbar.addAction("同步到其他Shell", self._sync_aliases)
         layout.addWidget(toolbar)
 
-        # Table
         self._table = QTableWidget(0, 3)
         self._table.setHorizontalHeaderLabels(["Alias", "命令", "行号"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -92,13 +89,21 @@ class AliasTab(QWidget):
         self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
-    @staticmethod
-    def _make_label(text):
-        from PySide6.QtWidgets import QLabel
-        return QLabel(text)
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._loaded:
+            self._loaded = True
+            self._on_shell_changed(self._shell_combo.currentText())
 
     def _on_shell_changed(self, shell: str):
         self._manager = AliasManager(shell)
+        self._refresh()
+
+    def _force_refresh(self):
+        if self._manager:
+            self._manager = AliasManager(self._shell_combo.currentText())
+        else:
+            self._on_shell_changed(self._shell_combo.currentText())
         self._refresh()
 
     def _refresh(self):

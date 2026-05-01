@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QProgressBar,
     QTableWidget,
     QTableWidgetItem,
     QToolBar,
@@ -25,12 +26,12 @@ class HistoryTab(QWidget):
         super().__init__()
         self._analyzer: HistoryAnalyzer | None = None
         self._dm = DataManager()
+        self._loaded = False
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
 
-        # Shell selector + search
         top = QHBoxLayout()
         top.addWidget(QLabel("Shell:"))
         self._shell_combo = QComboBox()
@@ -45,18 +46,19 @@ class HistoryTab(QWidget):
         top.addWidget(self._search_edit)
         layout.addLayout(top)
 
-        # Stats
         self._stats_label = QLabel("选择 Shell 后查看统计")
         layout.addWidget(self._stats_label)
 
-        # Toolbar
+        self._progress = QProgressBar()
+        self._progress.setVisible(False)
+        layout.addWidget(self._progress)
+
         toolbar = QToolBar()
         toolbar.setMovable(False)
-        toolbar.addAction("刷新", self._refresh)
+        toolbar.addAction("刷新", self._force_refresh)
         toolbar.addAction("导出 TOML", self._export_toml)
         layout.addWidget(toolbar)
 
-        # Table
         self._table = QTableWidget(0, 3)
         self._table.setHorizontalHeaderLabels(["排名", "命令", "次数"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -64,19 +66,37 @@ class HistoryTab(QWidget):
         self._table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._table)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._loaded:
+            self._loaded = True
+            self._on_shell_changed(self._shell_combo.currentText())
+
     def _on_shell_changed(self, shell: str):
         self._analyzer = HistoryAnalyzer(shell)
         self._refresh()
 
+    def _force_refresh(self):
+        self._on_shell_changed(self._shell_combo.currentText())
+
     def _refresh(self):
         if not self._analyzer:
             return
+
+        self._progress.setVisible(True)
+        self._progress.setRange(0, 0)  # indeterminate
+
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(50, self._do_refresh)
+
+    def _do_refresh(self):
         stats = self._analyzer.stats()
         self._stats_label.setText(
             f"总命令: {stats.total}  |  唯一命令: {stats.unique}"
         )
         self._search_edit.clear()
         self._show_top(stats.top)
+        self._progress.setVisible(False)
 
     def _show_top(self, items: list[tuple[str, int]]):
         self._table.setRowCount(0)

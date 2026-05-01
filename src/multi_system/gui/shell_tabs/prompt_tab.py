@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMessageBox,
     QPlainTextEdit,
     QTableWidget,
@@ -51,12 +50,12 @@ class PromptTab(QWidget):
     def __init__(self):
         super().__init__()
         self._manager: PromptThemeManager | None = None
+        self._loaded = False
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
 
-        # Shell selector
         top = QHBoxLayout()
         top.addWidget(QLabel("Shell:"))
         self._shell_combo = QComboBox()
@@ -66,14 +65,14 @@ class PromptTab(QWidget):
         top.addStretch()
         layout.addLayout(top)
 
-        # Toolbar
         toolbar = QToolBar()
         toolbar.setMovable(False)
+        toolbar.addAction("刷新", self._force_refresh)
+        toolbar.addSeparator()
         toolbar.addAction("应用选中主题", self._apply_selected)
         toolbar.addAction("自定义 Prompt", self._apply_custom)
         layout.addWidget(toolbar)
 
-        # Table
         self._table = QTableWidget(0, 3)
         self._table.setHorizontalHeaderLabels(["主题", "描述", "Prompt 值"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -81,9 +80,18 @@ class PromptTab(QWidget):
         self._table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._table)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._loaded:
+            self._loaded = True
+            self._on_shell_changed(self._shell_combo.currentText())
+
     def _on_shell_changed(self, shell: str):
         self._manager = PromptThemeManager(shell)
         self._refresh()
+
+    def _force_refresh(self):
+        self._on_shell_changed(self._shell_combo.currentText())
 
     def _refresh(self):
         if not self._manager:

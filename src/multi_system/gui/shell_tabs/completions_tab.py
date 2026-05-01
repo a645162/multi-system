@@ -23,12 +23,12 @@ class CompletionsTab(QWidget):
     def __init__(self):
         super().__init__()
         self._manager: CompletionManager | None = None
+        self._loaded = False
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
 
-        # Shell selector
         top = QHBoxLayout()
         top.addWidget(QLabel("Shell:"))
         self._shell_combo = QComboBox()
@@ -38,14 +38,12 @@ class CompletionsTab(QWidget):
         top.addStretch()
         layout.addLayout(top)
 
-        # Toolbar
         toolbar = QToolBar()
         toolbar.setMovable(False)
-        toolbar.addAction("刷新", self._refresh)
+        toolbar.addAction("刷新", self._force_refresh)
         toolbar.addAction("打开目录", self._open_dir)
         layout.addWidget(toolbar)
 
-        # Table
         self._table = QTableWidget(0, 3)
         self._table.setHorizontalHeaderLabels(["补全脚本", "路径", "大小"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -53,9 +51,18 @@ class CompletionsTab(QWidget):
         self._table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._table)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._loaded:
+            self._loaded = True
+            self._on_shell_changed(self._shell_combo.currentText())
+
     def _on_shell_changed(self, shell: str):
         self._manager = CompletionManager(shell)
         self._refresh()
+
+    def _force_refresh(self):
+        self._on_shell_changed(self._shell_combo.currentText())
 
     def _refresh(self):
         if not self._manager:
