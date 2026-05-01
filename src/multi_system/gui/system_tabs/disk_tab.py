@@ -2,10 +2,18 @@
 Tab: 磁盘分析
 """
 
+import os
+import subprocess
+import sys
+
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -53,6 +61,9 @@ class DiskTab(QWidget):
         self._dir_table.setHorizontalHeaderLabels(["目录", "大小", "文件数"])
         self._dir_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._dir_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._dir_table.setAlternatingRowColors(True)
+        self._dir_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._dir_table.customContextMenuRequested.connect(self._show_dir_context_menu)
         self._dir_table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._dir_table)
 
@@ -61,6 +72,9 @@ class DiskTab(QWidget):
         self._file_table.setHorizontalHeaderLabels(["文件", "大小"])
         self._file_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._file_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._file_table.setAlternatingRowColors(True)
+        self._file_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._file_table.customContextMenuRequested.connect(self._show_file_context_menu)
         self._file_table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._file_table)
 
@@ -90,3 +104,54 @@ class DiskTab(QWidget):
             self._file_table.insertRow(row)
             self._file_table.setItem(row, 0, QTableWidgetItem(f.path))
             self._file_table.setItem(row, 1, QTableWidgetItem(_fmt_size(f.size)))
+
+    @staticmethod
+    def _open_path_in_file_manager(path: str):
+        if sys.platform == "linux":
+            subprocess.Popen(["xdg-open", path])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        elif sys.platform == "win32":
+            subprocess.Popen(["explorer", path])
+
+    def _show_dir_context_menu(self, pos):
+        row = self._dir_table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._dir_table.selectRow(row)
+        menu = QMenu(self)
+        path_item = self._dir_table.item(row, 0)
+        path = path_item.text() if path_item else ""
+        menu.addAction("在文件管理器中打开", lambda: self._open_path_in_file_manager(path))
+        menu.addAction("复制路径", lambda: QApplication.clipboard().setText(path))
+        menu.exec(self._dir_table.viewport().mapToGlobal(pos))
+
+    def _show_file_context_menu(self, pos):
+        row = self._file_table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._file_table.selectRow(row)
+        menu = QMenu(self)
+        path_item = self._file_table.item(row, 0)
+        path = path_item.text() if path_item else ""
+        parent_dir = os.path.dirname(path)
+        menu.addAction("在文件管理器中显示", lambda: self._open_path_in_file_manager(parent_dir))
+        menu.addAction("复制路径", lambda: QApplication.clipboard().setText(path))
+        menu.addSeparator()
+        menu.addAction("删除文件", lambda: self._delete_file(path))
+        menu.exec(self._file_table.viewport().mapToGlobal(pos))
+
+    def _delete_file(self, path: str):
+        if not path:
+            return
+        reply = QMessageBox.warning(
+            self, "确认删除",
+            f"确定要删除文件吗？\n{path}\n此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                os.remove(path)
+                self._scan()
+            except OSError as e:
+                QMessageBox.warning(self, "删除失败", f"无法删除文件: {e}")

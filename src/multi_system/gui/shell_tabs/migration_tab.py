@@ -2,12 +2,15 @@
 Tab: 配置迁移
 """
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QMessageBox,
     QPlainTextEdit,
     QTableWidget,
@@ -75,7 +78,10 @@ class MigrationTab(QWidget):
         self._table.setHorizontalHeaderLabels(["类型", "名称", "值", "可迁移"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
     def showEvent(self, event):
@@ -129,3 +135,29 @@ class MigrationTab(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self._manager.execute(migratable)
             QMessageBox.information(self, "迁移完成", "配置已迁移，重新打开终端即可生效")
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        menu = QMenu(self)
+        menu.addAction("复制名称", self._copy_name)
+        menu.addAction("复制值", self._copy_value)
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_name(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 1)
+        if item:
+            QApplication.clipboard().setText(item.text())
+
+    def _copy_value(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 2)
+        if item:
+            QApplication.clipboard().setText(item.text())

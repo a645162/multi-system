@@ -4,10 +4,12 @@ Tab: 端口扫描
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QProgressBar,
     QPushButton,
     QSpinBox,
@@ -90,7 +92,10 @@ class PortScanTab(QWidget):
         self._table.setHorizontalHeaderLabels(["端口", "状态", "服务"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
     def showEvent(self, event):
@@ -163,3 +168,29 @@ class PortScanTab(QWidget):
             self._table.setItem(row, 2, QTableWidgetItem(r.service))
 
         self._table.resizeColumnsToContents()
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        menu = QMenu(self)
+        menu.addAction("复制端口号", self._copy_port)
+        menu.addAction("复制服务名", self._copy_service)
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_port(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 0)
+        if item:
+            QApplication.clipboard().setText(item.text())
+
+    def _copy_service(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 2)
+        if item:
+            QApplication.clipboard().setText(item.text())

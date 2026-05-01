@@ -83,6 +83,7 @@ class AliasTab(QWidget):
         self._table.setHorizontalHeaderLabels(["Alias", "命令", "行号"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
         self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._show_context_menu)

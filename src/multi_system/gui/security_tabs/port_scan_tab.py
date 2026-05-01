@@ -4,10 +4,12 @@ Tab: 安全端口扫描 (复用 network.port_scanner)
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QProgressBar,
     QPushButton,
     QSpinBox,
@@ -90,6 +92,9 @@ class SecurityPortScanTab(QWidget):
         self._table.setHorizontalHeaderLabels(["端口", "状态", "服务"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         self._table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._table)
 
@@ -163,3 +168,15 @@ class SecurityPortScanTab(QWidget):
             self._table.setItem(row, 2, QTableWidgetItem(r.service))
 
         self._table.resizeColumnsToContents()
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        port_item = self._table.item(row, 0)
+        service_item = self._table.item(row, 2)
+        menu = QMenu(self)
+        menu.addAction("复制端口号", lambda: QApplication.clipboard().setText(port_item.text() if port_item else ""))
+        menu.addAction("复制服务名", lambda: QApplication.clipboard().setText(service_item.text() if service_item else ""))
+        menu.exec(self._table.viewport().mapToGlobal(pos))

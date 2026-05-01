@@ -2,10 +2,12 @@
 Tab: 防火墙管理
 """
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -67,6 +69,7 @@ class FirewallTab(QWidget):
         toolbar = QToolBar()
         toolbar.setMovable(False)
         toolbar.addAction("刷新", self._force_refresh)
+        toolbar.addAction("删除规则", self._delete_selected_rule)
         layout.addWidget(toolbar)
 
         # --- Rules table ---
@@ -74,7 +77,10 @@ class FirewallTab(QWidget):
         self._table.setHorizontalHeaderLabels(["规则", "动作", "端口", "协议", "方向"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
         # --- Raw status output ---
@@ -89,6 +95,35 @@ class FirewallTab(QWidget):
         if not self._loaded:
             self._loaded = True
             self._refresh()
+
+    # --- Context menu ---
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+
+        menu = QMenu(self)
+
+        delete_action = menu.addAction("删除规则")
+        delete_action.triggered.connect(self._delete_selected_rule)
+
+        menu.addSeparator()
+
+        rule_item = self._table.item(row, 0)
+        rule_text = rule_item.text() if rule_item else ""
+
+        copy_action = menu.addAction("复制规则文本")
+        copy_action.triggered.connect(lambda: self._copy_to_clipboard(rule_text))
+
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_to_clipboard(self, text: str):
+        from PySide6.QtWidgets import QApplication
+        QApplication.clipboard().setText(text)
+
+    # --- Existing methods ---
 
     def _force_refresh(self):
         self._refresh()
@@ -141,3 +176,28 @@ class FirewallTab(QWidget):
             self._refresh()
         else:
             QMessageBox.warning(self, "失败", "添加规则失败，可能需要管理员权限")
+
+    # --- New actions ---
+
+    def _delete_selected_rule(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        row = rows[0].row()
+        rule_item = self._table.item(row, 0)
+        if not rule_item:
+            return
+        rule_name = rule_item.text()
+        reply = QMessageBox.warning(
+            self,
+            "确认删除",
+            f"确定要删除防火墙规则吗？\n\n{rule_name}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        if FirewallManager.delete_rule(rule_name):
+            QMessageBox.information(self, "成功", "规则已删除")
+            self._refresh()
+        else:
+            QMessageBox.warning(self, "失败", "删除规则失败，可能需要管理员权限")

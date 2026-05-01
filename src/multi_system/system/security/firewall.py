@@ -85,3 +85,22 @@ class FirewallManager:
             except FileNotFoundError:
                 return False
         return False
+
+    @staticmethod
+    def delete_rule(rule_name: str) -> bool:
+        if sys.platform == "linux":
+            try:
+                # Extract rule number from ufw numbered output like "[1] ..."
+                import re
+                m = re.match(r"\[(\d+)\]", rule_name)
+                if m:
+                    num = m.group(1)
+                    r = subprocess.run(
+                        ["sudo", "ufw", "delete", num],
+                        capture_output=True, text=True, input="y\n",
+                    )
+                    return r.returncode == 0
+                return False
+            except FileNotFoundError:
+                return False
+        return False

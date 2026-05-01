@@ -2,11 +2,13 @@
 Tab: 包管理器
 """
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QTableWidget,
@@ -59,6 +61,10 @@ class PackageTab(QWidget):
         toolbar.setMovable(False)
         toolbar.addAction("刷新", self._force_refresh)
         toolbar.addAction("列出已安装", self._list_packages)
+        toolbar.addSeparator()
+        toolbar.addAction("卸载", self._uninstall_selected)
+        toolbar.addAction("更新", self._update_selected)
+        toolbar.addAction("全部更新", self._update_all)
         layout.addWidget(toolbar)
 
         # --- Table ---
@@ -66,7 +72,10 @@ class PackageTab(QWidget):
         self._table.setHorizontalHeaderLabels(["包名", "版本", "管理器"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
         # --- Status ---
@@ -78,6 +87,51 @@ class PackageTab(QWidget):
         if not self._loaded:
             self._loaded = True
             self._detect_managers()
+
+    # --- Context menu ---
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+
+        menu = QMenu(self)
+
+        install_action = menu.addAction("安装")
+        install_action.triggered.connect(self._install_package)
+
+        uninstall_action = menu.addAction("卸载")
+        uninstall_action.triggered.connect(self._uninstall_selected)
+
+        update_action = menu.addAction("更新")
+        update_action.triggered.connect(self._update_selected)
+
+        menu.addSeparator()
+
+        copy_name_action = menu.addAction("复制包名")
+        pkg_name = self._table.item(row, 0).text() if self._table.item(row, 0) else ""
+        copy_name_action.triggered.connect(lambda: self._copy_to_clipboard(pkg_name))
+
+        detail_action = menu.addAction("显示详情")
+        detail_action.triggered.connect(lambda: self._show_package_detail(row))
+
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_to_clipboard(self, text: str):
+        from PySide6.QtWidgets import QApplication
+        QApplication.clipboard().setText(text)
+
+    def _show_package_detail(self, row: int):
+        name = self._table.item(row, 0).text() if self._table.item(row, 0) else ""
+        version = self._table.item(row, 1).text() if self._table.item(row, 1) else ""
+        manager = self._table.item(row, 2).text() if self._table.item(row, 2) else ""
+        QMessageBox.information(
+            self, "包详情",
+            f"包名: {name}\n版本: {version}\n管理器: {manager}",
+        )
+
+    # --- Existing methods ---
 
     def _force_refresh(self):
         self._list_packages()
@@ -139,6 +193,81 @@ class PackageTab(QWidget):
             self._list_packages()
         else:
             QMessageBox.warning(self, "失败", f"{package} 安装失败")
+
+    # --- New toolbar/context actions ---
+
+    def _uninstall_selected(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            QMessageBox.information(self, "提示", "请先选择一个包")
+            return
+        row = rows[0].row()
+        package = self._table.item(row, 0).text() if self._table.item(row, 0) else ""
+        manager = self._table.item(row, 2).text() if self._table.item(row, 2) else ""
+        if not package or not manager:
+            return
+        reply = QMessageBox.warning(
+            self,
+            "确认卸载",
+            f"确定要使用 {manager} 卸载 {package} 吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self._status_label.setText(f"正在卸载 {package}...")
+        success = PackageManager.uninstall(manager, package)
+        if success:
+            QMessageBox.information(self, "成功", f"{package} 卸载成功")
+            self._list_packages()
+        else:
+            QMessageBox.warning(self, "失败", f"{package} 卸载失败")
+
+    def _update_selected(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            QMessageBox.information(self, "提示", "请先选择一个包")
+            return
+        row = rows[0].row()
+        package = self._table.item(row, 0).text() if self._table.item(row, 0) else ""
+        manager = self._table.item(row, 2).text() if self._table.item(row, 2) else ""
+        if not package or not manager:
+            return
+        reply = QMessageBox.warning(
+            self,
+            "确认更新",
+            f"确定要使用 {manager} 更新 {package} 吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self._status_label.setText(f"正在更新 {package}...")
+        success = PackageManager.update(manager, package)
+        if success:
+            QMessageBox.information(self, "成功", f"{package} 更新成功")
+            self._list_packages()
+        else:
+            QMessageBox.warning(self, "失败", f"{package} 更新失败")
+
+    def _update_all(self):
+        manager = self._manager_combo.currentText()
+        if not manager:
+            QMessageBox.information(self, "提示", "请先选择一个包管理器")
+            return
+        reply = QMessageBox.warning(
+            self,
+            "确认全部更新",
+            f"确定要使用 {manager} 更新所有包吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self._status_label.setText("正在更新所有包...")
+        success = PackageManager.update(manager)
+        if success:
+            QMessageBox.information(self, "成功", "全部更新成功")
+            self._list_packages()
+        else:
+            QMessageBox.warning(self, "失败", "全部更新失败")
 
     def _show_packages(self, pkgs):
         self._table.setRowCount(0)

@@ -2,12 +2,18 @@
 Tab: SSH 密钥管理
 """
 
+import os
+import subprocess
+import sys
+
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPlainTextEdit,
     QTableWidget,
@@ -80,7 +86,10 @@ class SSHKeyTab(QWidget):
         self._table.setHorizontalHeaderLabels(["文件名", "类型", "公钥", "大小"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
         layout.addWidget(QLabel("公钥内容:"))
@@ -94,6 +103,86 @@ class SSHKeyTab(QWidget):
         if not self._loaded:
             self._loaded = True
             self._refresh()
+
+    # --- Context menu ---
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+
+        menu = QMenu(self)
+
+        copy_pub_action = menu.addAction("复制公钥")
+        copy_pub_action.triggered.connect(self._copy_public_key)
+
+        delete_action = menu.addAction("删除密钥")
+        delete_action.triggered.connect(self._delete_key)
+
+        menu.addSeparator()
+
+        open_dir_action = menu.addAction("在文件管理器中显示")
+        open_dir_action.triggered.connect(self._open_ssh_dir)
+
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_public_key(self):
+        name = self._selected_key_name()
+        if not name:
+            return
+        base_name = name.removesuffix(".pub")
+        pub_key = self._manager.get_public_key(base_name)
+        if pub_key:
+            from PySide6.QtWidgets import QApplication
+            QApplication.clipboard().setText(pub_key)
+            self._pub_view.setPlainText(pub_key)
+        else:
+            QMessageBox.information(self, "提示", f"未找到 {base_name} 的公钥文件")
+
+    def _delete_key(self):
+        name = self._selected_key_name()
+        if not name:
+            return
+        base_name = name.removesuffix(".pub")
+        ssh_dir = os.path.expanduser("~/.ssh")
+        key_path = os.path.join(ssh_dir, base_name)
+        pub_path = key_path + ".pub"
+
+        reply = QMessageBox.warning(
+            self,
+            "确认删除",
+            f"确定要删除密钥 {base_name} 吗？\n\n将删除:\n{key_path}\n{pub_path}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            if os.path.exists(key_path):
+                os.remove(key_path)
+            if os.path.exists(pub_path):
+                os.remove(pub_path)
+            QMessageBox.information(self, "成功", f"密钥 {base_name} 已删除")
+            self._force_refresh()
+        except OSError as e:
+            QMessageBox.warning(self, "失败", f"删除密钥失败: {e}")
+
+    def _open_ssh_dir(self):
+        ssh_dir = os.path.expanduser("~/.ssh")
+        if not os.path.isdir(ssh_dir):
+            QMessageBox.information(self, "提示", "~/.ssh 目录不存在")
+            return
+        try:
+            if sys.platform == "linux":
+                subprocess.Popen(["xdg-open", ssh_dir])
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", ssh_dir])
+            elif sys.platform == "win32":
+                subprocess.Popen(["explorer", ssh_dir])
+        except (FileNotFoundError, OSError):
+            QMessageBox.warning(self, "失败", "无法打开文件管理器")
+
+    # --- Existing methods ---
 
     def _force_refresh(self):
         self._manager = SSHKeyManager()

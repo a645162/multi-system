@@ -4,11 +4,13 @@ Tab: Prompt 主题
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QMessageBox,
     QPlainTextEdit,
     QTableWidget,
@@ -77,7 +79,10 @@ class PromptTab(QWidget):
         self._table.setHorizontalHeaderLabels(["主题", "描述", "Prompt 值"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
     def showEvent(self, event):
@@ -133,3 +138,21 @@ class PromptTab(QWidget):
                 self._manager.backup("pre-prompt")
                 self._manager.apply_custom(value)
                 QMessageBox.information(self, "应用成功", "自定义 Prompt 已应用")
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        menu = QMenu(self)
+        menu.addAction("应用主题", self._apply_selected)
+        menu.addAction("复制 Prompt 值", self._copy_prompt_value)
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_prompt_value(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 2)
+        if item:
+            QApplication.clipboard().setText(item.text())

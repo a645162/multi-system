@@ -42,3 +42,19 @@ class FileAuditor:
                 except (OSError, PermissionError):
                     continue
         return issues
+
+    @staticmethod
+    def fix_permission(path: str, issue: str) -> bool:
+        try:
+            st = os.stat(path)
+            if issue == "World-writable":
+                # Remove world-writable: chmod o-w
+                os.chmod(path, st.st_mode & ~stat.S_IWOTH)
+                return True
+            if issue == "SUID bit set":
+                # Remove SUID: chmod u-s
+                os.chmod(path, st.st_mode & ~stat.S_ISUID)
+                return True
+        except OSError:
+            return False
+        return False

@@ -2,6 +2,7 @@
 Tab: 环境变量管理
 """
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -9,6 +10,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QTableWidget,
     QTableWidgetItem,
@@ -81,7 +83,10 @@ class EnvVarTab(QWidget):
         self._table.setHorizontalHeaderLabels(["变量名", "值", "来源"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
     def showEvent(self, event):
@@ -89,6 +94,43 @@ class EnvVarTab(QWidget):
         if not self._loaded:
             self._loaded = True
             self._refresh()
+
+    # --- Context menu ---
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+
+        menu = QMenu(self)
+
+        edit_action = menu.addAction("编辑")
+        edit_action.triggered.connect(self._edit_var)
+
+        delete_action = menu.addAction("删除")
+        delete_action.triggered.connect(self._delete_var)
+
+        menu.addSeparator()
+
+        name_item = self._table.item(row, 0)
+        name_text = name_item.text() if name_item else ""
+        value_item = self._table.item(row, 1)
+        value_text = value_item.text() if value_item else ""
+
+        copy_name_action = menu.addAction("复制变量名")
+        copy_name_action.triggered.connect(lambda: self._copy_to_clipboard(name_text))
+
+        copy_value_action = menu.addAction("复制变量值")
+        copy_value_action.triggered.connect(lambda: self._copy_to_clipboard(value_text))
+
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_to_clipboard(self, text: str):
+        from PySide6.QtWidgets import QApplication
+        QApplication.clipboard().setText(text)
+
+    # --- Existing methods ---
 
     def _force_refresh(self):
         self._refresh()

@@ -5,6 +5,7 @@ Tab: 配置管理 - AI模型Profile管理
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QTableWidget,
     QTableWidgetItem,
@@ -115,6 +117,9 @@ class ProfileTab(QWidget):
         self._table.setHorizontalHeaderLabels(["名称", "工具", "Provider", "Model ID", "API Key Env", "Base URL"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         self._table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._table)
 
@@ -221,6 +226,43 @@ class ProfileTab(QWidget):
         tool = SUPPORTED_TOOLS[self._tool_combo.currentIndex()]
         self._update_current_info(tool)
         QMessageBox.information(self, "应用成功", f"已应用 Profile \"{profile.name}\"")
+
+    def _edit_profile(self):
+        if not self._switcher:
+            return
+        profile = self._selected_profile()
+        if profile is None:
+            return
+        dlg = _AddProfileDialog(self, profile=profile)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            new_profile = dlg.get_profile()
+            if not new_profile.name:
+                return
+            idx = self._profiles.index(profile)
+            self._profiles[idx] = new_profile
+            self._switcher.save_profiles(self._profiles)
+            self._refresh_table()
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        profile = self._selected_profile()
+        if profile is None:
+            return
+        menu = QMenu(self)
+        menu.addAction("应用 Profile", self._apply_profile)
+        menu.addAction("编辑", self._edit_profile)
+        menu.addAction("删除", self._delete_profile)
+        menu.addSeparator()
+        model_id_item = self._table.item(row, 3)
+        base_url_item = self._table.item(row, 5)
+        name_item = self._table.item(row, 0)
+        menu.addAction("复制模型 ID", lambda: QApplication.clipboard().setText(model_id_item.text() if model_id_item else ""))
+        menu.addAction("复制 Base URL", lambda: QApplication.clipboard().setText(base_url_item.text() if base_url_item else ""))
+        menu.addAction("复制 Profile 名", lambda: QApplication.clipboard().setText(name_item.text() if name_item else ""))
+        menu.exec(self._table.viewport().mapToGlobal(pos))
 
     def _launch_tool(self):
         if not self._switcher:

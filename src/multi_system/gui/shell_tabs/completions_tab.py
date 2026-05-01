@@ -3,11 +3,17 @@ Tab: 补全管理
 """
 
 import os
+import subprocess
+import sys
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QMenu,
+    QMessageBox,
     QTableWidget,
     QTableWidgetItem,
     QToolBar,
@@ -47,7 +53,10 @@ class CompletionsTab(QWidget):
         self._table.setHorizontalHeaderLabels(["补全脚本", "路径", "大小"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
     def showEvent(self, event):
@@ -81,4 +90,45 @@ class CompletionsTab(QWidget):
             return
         path = self._table.item(rows[0].row(), 1).text()
         parent = os.path.dirname(path)
-        os.system(f"xdg-open '{parent}' 2>/dev/null || open '{parent}' 2>/dev/null || explorer '{parent}' 2>/dev/null &")
+        if sys.platform == "linux":
+            subprocess.Popen(["xdg-open", parent])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", parent])
+        elif sys.platform == "win32":
+            subprocess.Popen(["explorer", parent])
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        menu = QMenu(self)
+        menu.addAction("打开所在目录", self._open_dir)
+        menu.addAction("复制路径", self._copy_path)
+        menu.addAction("删除补全脚本", self._delete_completion)
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_path(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 1)
+        if item:
+            QApplication.clipboard().setText(item.text())
+
+    def _delete_completion(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 1)
+        if not item:
+            return
+        path = item.text()
+        reply = QMessageBox.warning(
+            self, "确认删除",
+            f"确定要删除补全脚本吗？\n\n{path}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            os.remove(path)
+            self._refresh()

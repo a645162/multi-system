@@ -2,11 +2,16 @@
 Tab: 应用启动器
 """
 
+import subprocess
+import sys
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QTableWidget,
@@ -52,6 +57,9 @@ class AppLauncherTab(QWidget):
         self._table.setHorizontalHeaderLabels(["应用名", "命令"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         self._table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self._table)
 
@@ -105,3 +113,56 @@ class AppLauncherTab(QWidget):
             self._status_label.setText(f"已启动: {item.text()}")
         else:
             QMessageBox.warning(self, "失败", f"无法启动: {item.text()}")
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        menu = QMenu(self)
+        menu.addAction("启动", self._launch_selected)
+        cmd_item = self._table.item(row, 1)
+        menu.addAction("复制命令", lambda: QApplication.clipboard().setText(cmd_item.text() if cmd_item else ""))
+        menu.addSeparator()
+        menu.addAction("在文件管理器中显示", self._open_in_file_manager)
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _open_in_file_manager(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        name_item = self._table.item(rows[0].row(), 0)
+        cmd = name_item.data(Qt.ItemDataRole.UserRole) if name_item else ""
+        # Try to find .desktop file path or open app directory
+        from pathlib import Path
+        autostart_dirs = [
+            Path("/usr/share/applications"),
+            Path.home() / ".local" / "share" / "applications",
+        ]
+        for d in autostart_dirs:
+            if d.exists():
+                for f in d.glob("*.desktop"):
+                    try:
+                        content = f.read_text(encoding="utf-8", errors="replace")
+                        for line in content.splitlines():
+                            if line.startswith("Exec=") and line.split("=", 1)[1].strip() == cmd:
+                                path = str(d)
+                                if sys.platform == "linux":
+                                    subprocess.Popen(["xdg-open", path])
+                                elif sys.platform == "darwin":
+                                    subprocess.Popen(["open", path])
+                                elif sys.platform == "win32":
+                                    subprocess.Popen(["explorer", path])
+                                return
+                    except OSError:
+                        continue
+        # Fallback: just open the autostart dir
+        for d in autostart_dirs:
+            if d.exists():
+                if sys.platform == "linux":
+                    subprocess.Popen(["xdg-open", str(d)])
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["open", str(d)])
+                elif sys.platform == "win32":
+                    subprocess.Popen(["explorer", str(d)])
+                return

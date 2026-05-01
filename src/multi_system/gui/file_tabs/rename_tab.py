@@ -4,11 +4,14 @@ Tab: 批量重命名
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QTableWidget,
@@ -79,7 +82,10 @@ class RenameTab(QWidget):
         self._table.setHorizontalHeaderLabels(["原文件名", "新文件名"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
         # --- Status ---
@@ -145,3 +151,29 @@ class RenameTab(QWidget):
         QMessageBox.information(self, "完成", f"成功重命名 {success}/{len(ops)} 个文件")
         self._execute_btn.setEnabled(False)
         self._preview()
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        menu = QMenu(self)
+        menu.addAction("复制原文件名", self._copy_old_name)
+        menu.addAction("复制新文件名", self._copy_new_name)
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_old_name(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 0)
+        if item:
+            QApplication.clipboard().setText(item.text())
+
+    def _copy_new_name(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 1)
+        if item:
+            QApplication.clipboard().setText(item.text())

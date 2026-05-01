@@ -92,6 +92,60 @@ class PackageManager:
             return False
 
     @staticmethod
+    def uninstall(manager: str, package: str) -> bool:
+        cmd_map = {
+            "apt": ["sudo", "apt", "remove", "-y", package],
+            "brew": ["brew", "uninstall", package],
+            "winget": ["winget", "uninstall", package],
+            "choco": ["choco", "uninstall", "-y", package],
+            "scoop": ["scoop", "uninstall", package],
+            "pip": ["pip", "uninstall", "-y", package],
+            "pacman": ["sudo", "pacman", "-R", "--noconfirm", package],
+        }
+        cmd = cmd_map.get(manager)
+        if not cmd:
+            return False
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=120
+            )
+            return result.returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+
+    @staticmethod
+    def update(manager: str, package: str = "") -> bool:
+        if package:
+            cmd_map = {
+                "apt": ["sudo", "apt", "upgrade", "-y", package],
+                "brew": ["brew", "upgrade", package],
+                "winget": ["winget", "upgrade", package],
+                "choco": ["choco", "upgrade", "-y", package],
+                "scoop": ["scoop", "update", package],
+                "pip": ["pip", "install", "--upgrade", package],
+                "pacman": ["sudo", "pacman", "-S", "--noconfirm", package],
+            }
+        else:
+            cmd_map = {
+                "apt": ["sudo", "apt", "upgrade", "-y"],
+                "brew": ["brew", "upgrade"],
+                "winget": ["winget", "upgrade", "--all"],
+                "choco": ["choco", "upgrade", "-y", "--all"],
+                "scoop": ["scoop", "update", "--all"],
+                "pacman": ["sudo", "pacman", "-Syu", "--noconfirm"],
+            }
+        cmd = cmd_map.get(manager)
+        if not cmd:
+            return False
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=300
+            )
+            return result.returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+
+    @staticmethod
     def search_package(manager: str, keyword: str) -> list[PackageInfo]:
         cmd_map = {
             "apt": ["apt", "search", keyword],

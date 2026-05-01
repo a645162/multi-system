@@ -65,6 +65,7 @@ class StartupTab(QWidget):
         self._table.setHorizontalHeaderLabels(["次数", "Real (s)", "User (s)", "Sys (s)"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         layout.addWidget(self._table)
 
         layout.addWidget(QLabel("Zsh Profiling 输出:"))

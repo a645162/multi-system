@@ -2,12 +2,18 @@
 Tab: 大文件查找
 """
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSpinBox,
@@ -65,7 +71,10 @@ class BigFileTab(QWidget):
         self._table.setHorizontalHeaderLabels(["文件路径", "大小"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
         # --- Status ---
@@ -108,3 +117,56 @@ class BigFileTab(QWidget):
 
         self._status_label.setText(f"找到 {len(files)} 个大文件 (>= {min_size}MB)")
         self._scan_btn.setEnabled(True)
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        menu = QMenu(self)
+        menu.addAction("在文件管理器中显示", self._open_in_file_manager)
+        menu.addAction("复制路径", self._copy_path)
+        menu.addSeparator()
+        menu.addAction("删除文件", self._delete_file)
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _open_in_file_manager(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 0)
+        if not item:
+            return
+        path = item.text()
+        parent = os.path.dirname(path)
+        if sys.platform == "linux":
+            subprocess.Popen(["xdg-open", parent])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", parent])
+        elif sys.platform == "win32":
+            subprocess.Popen(["explorer", parent])
+
+    def _copy_path(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 0)
+        if item:
+            QApplication.clipboard().setText(item.text())
+
+    def _delete_file(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 0)
+        if not item:
+            return
+        path = item.text()
+        reply = QMessageBox.warning(
+            self, "确认删除",
+            f"确定要删除此文件吗？\n\n{path}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            os.remove(path)
+            self._scan()

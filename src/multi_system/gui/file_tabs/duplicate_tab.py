@@ -2,12 +2,19 @@
 Tab: 重复文件查找
 """
 
+import contextlib
+import os
+import subprocess
+import sys
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSpinBox,
@@ -66,7 +73,10 @@ class DuplicateTab(QWidget):
         self._table.setHorizontalHeaderLabels(["哈希", "大小", "副本数", "路径列表"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
         # --- Status ---
@@ -114,3 +124,65 @@ class DuplicateTab(QWidget):
             f"找到 {len(groups)} 组重复文件，浪费空间: {_fmt_size(total_waste)}"
         )
         self._scan_btn.setEnabled(True)
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        menu = QMenu(self)
+        menu.addAction("复制路径列表", self._copy_paths)
+        menu.addAction("在文件管理器中显示", self._open_in_file_manager)
+        menu.addSeparator()
+        menu.addAction("删除重复文件(保留一份)", self._delete_duplicates)
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_paths(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 3)
+        if item:
+            QApplication.clipboard().setText(item.text())
+
+    def _open_in_file_manager(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 3)
+        if not item:
+            return
+        paths = item.text().split("\n")
+        if not paths:
+            return
+        parent = os.path.dirname(paths[0])
+        if sys.platform == "linux":
+            subprocess.Popen(["xdg-open", parent])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", parent])
+        elif sys.platform == "win32":
+            subprocess.Popen(["explorer", parent])
+
+    def _delete_duplicates(self):
+        rows = self._table.selectionModel().selectedRows()
+        if not rows:
+            return
+        item = self._table.item(rows[0].row(), 3)
+        if not item:
+            return
+        paths = [p.strip() for p in item.text().split("\n") if p.strip()]
+        if len(paths) <= 1:
+            QMessageBox.information(self, "提示", "该组只有一个文件，无需删除")
+            return
+        to_delete = paths[1:]
+        reply = QMessageBox.warning(
+            self, "确认删除",
+            f"将保留第一个文件，删除其余 {len(to_delete)} 个重复文件:\n\n"
+            + "\n".join(to_delete),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            for p in to_delete:
+                with contextlib.suppress(OSError):
+                    os.remove(p)
+            self._scan()

@@ -2,13 +2,18 @@
 Tab: 文件权限审计
 """
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSpinBox,
@@ -76,7 +81,10 @@ class FileAuditTab(QWidget):
         self._table.setHorizontalHeaderLabels(["路径", "问题", "权限", "大小"])
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._table)
 
         # --- Status ---
@@ -88,6 +96,73 @@ class FileAuditTab(QWidget):
         if not self._loaded:
             self._loaded = True
             self._scan()
+
+    # --- Context menu ---
+
+    def _show_context_menu(self, pos):
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+
+        menu = QMenu(self)
+
+        fix_action = menu.addAction("修复权限")
+        fix_action.triggered.connect(lambda: self._fix_permission(row))
+
+        menu.addSeparator()
+
+        path_item = self._table.item(row, 0)
+        path_text = path_item.text() if path_item else ""
+
+        copy_path_action = menu.addAction("复制路径")
+        copy_path_action.triggered.connect(lambda: self._copy_to_clipboard(path_text))
+
+        open_dir_action = menu.addAction("在文件管理器中显示")
+        open_dir_action.triggered.connect(lambda: self._open_in_file_manager(path_text))
+
+        menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _copy_to_clipboard(self, text: str):
+        from PySide6.QtWidgets import QApplication
+        QApplication.clipboard().setText(text)
+
+    def _fix_permission(self, row: int):
+        path_item = self._table.item(row, 0)
+        issue_item = self._table.item(row, 1)
+        if not path_item or not issue_item:
+            return
+        path = path_item.text()
+        issue = issue_item.text()
+        reply = QMessageBox.warning(
+            self,
+            "确认修复权限",
+            f"确定要修复以下文件的权限吗？\n\n路径: {path}\n问题: {issue}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        if FileAuditor.fix_permission(path, issue):
+            QMessageBox.information(self, "成功", f"已修复 {path} 的权限")
+            self._scan()
+        else:
+            QMessageBox.warning(self, "失败", f"无法修复 {path} 的权限，可能需要管理员权限")
+
+    def _open_in_file_manager(self, path_str: str):
+        if not path_str or not os.path.exists(path_str):
+            QMessageBox.information(self, "提示", f"路径不存在: {path_str}")
+            return
+        try:
+            if sys.platform == "linux":
+                subprocess.Popen(["xdg-open", os.path.dirname(path_str)])
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", os.path.dirname(path_str)])
+            elif sys.platform == "win32":
+                subprocess.Popen(["explorer", "/select,", path_str])
+        except (FileNotFoundError, OSError):
+            QMessageBox.warning(self, "失败", "无法打开文件管理器")
+
+    # --- Existing methods ---
 
     def _scan(self):
         path_str = self._path_edit.text().strip()
